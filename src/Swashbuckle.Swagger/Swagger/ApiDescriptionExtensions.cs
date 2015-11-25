@@ -1,6 +1,9 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.AspNet.Mvc.ApiExplorer;
+using Microsoft.AspNet.Mvc.Controllers;
 
 namespace Swashbuckle.Swagger
 {
@@ -20,27 +23,23 @@ namespace Swashbuckle.Swagger
 
         public static bool IsObsolete(this ApiDescription apiDescription)
         {
-            return apiDescription.GetActionPropertyOrDefault("IsObsolete", false);
+            return apiDescription.GetActionAttributes().OfType<ObsoleteAttribute>().Any();
         }
 
         public static IEnumerable<object> GetControllerAttributes(this ApiDescription apiDescription)
         {
-            return apiDescription.GetActionPropertyOrDefault("ControllerAttributes", new object[] { });
+            var actionDescriptor = apiDescription.ActionDescriptor as ControllerActionDescriptor;
+            return (actionDescriptor != null)
+                ? actionDescriptor.ControllerTypeInfo.GetCustomAttributes(false)
+                : Enumerable.Empty<object>();
         }
 
         public static IEnumerable<object> GetActionAttributes(this ApiDescription apiDescription)
         {
-            return apiDescription.GetActionPropertyOrDefault("ActionAttributes", new object[] { });
-        }
-
-        public static T GetActionPropertyOrDefault<T>(this ApiDescription apiDescription, string key, T defaultValue)
-        {
-            if (apiDescription.ActionDescriptor.Properties.ContainsKey(key))
-            {
-                var value = apiDescription.ActionDescriptor.Properties[key];
-                return (T)value;
-            }
-            return defaultValue;
+            var actionDescriptor = apiDescription.ActionDescriptor as ControllerActionDescriptor;
+            return (actionDescriptor != null)
+                ? actionDescriptor.MethodInfo.GetCustomAttributes(false)
+                : Enumerable.Empty<object>();
         }
     }
 }

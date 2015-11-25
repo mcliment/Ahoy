@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections.ObjectModel;
-using Microsoft.Framework.OptionsModel;
+using System.Reflection;
+using Microsoft.Extensions.OptionsModel;
 using Microsoft.AspNet.Routing;
 using Microsoft.AspNet.Routing.Constraints;
 using Microsoft.AspNet.Mvc;
@@ -28,9 +29,14 @@ namespace Swashbuckle.Swagger.Fixtures.ApiDescriptions
         }
 
         public FakeApiDescriptionGroupCollectionProvider Add(
-            string httpMethod, string routeTemplate, string actionFixtureName)
+            string httpMethod,
+            string routeTemplate,
+            string actionFixtureName,
+            string controllerFixtureName = "NotAnnotated"
+        )
         {
-            _actionDescriptors.Add(CreateActionDescriptor(httpMethod, routeTemplate, actionFixtureName));
+            _actionDescriptors.Add(
+                CreateActionDescriptor(httpMethod, routeTemplate, actionFixtureName, controllerFixtureName));
             return this;
         }
 
@@ -45,16 +51,20 @@ namespace Swashbuckle.Swagger.Fixtures.ApiDescriptions
         }
 
         private ControllerActionDescriptor CreateActionDescriptor(
-            string httpMethod, string routeTemplate, string actionFixtureName)
+            string httpMethod,
+            string routeTemplate,
+            string actionFixtureName,
+            string controllerFixtureName
+        )
         {
             var descriptor = new ControllerActionDescriptor();
             descriptor.SetProperty(new ApiDescriptionActionData());
             descriptor.DisplayName = actionFixtureName;
 
-            descriptor.ActionConstraints = new List<IActionConstraintMetadata>
-            {
-                new HttpMethodConstraint(new[] { httpMethod })
-            };
+            descriptor.ActionConstraints = new List<IActionConstraintMetadata>();
+            if (httpMethod != null)
+                descriptor.ActionConstraints.Add(new HttpMethodConstraint(new[] { httpMethod }));
+
             descriptor.AttributeRouteInfo = new AttributeRouteInfo { Template = routeTemplate };
 
             descriptor.MethodInfo = typeof(ActionFixtures).GetMethod(actionFixtureName);
@@ -71,10 +81,11 @@ namespace Swashbuckle.Swagger.Fixtures.ApiDescriptions
                     })
                 .ToList();
 
-            // Set some additional properties - typically done via IApplicationModelConvention
-            var attributes = descriptor.MethodInfo.GetCustomAttributes(true);
-            descriptor.Properties.Add("ActionAttributes", attributes);
-            descriptor.Properties.Add("IsObsolete", attributes.OfType<ObsoleteAttribute>().Any());
+            var controllerType = typeof(ControllerFixtures).GetNestedType(controllerFixtureName);
+            if (controllerType == null)
+                throw new InvalidOperationException(
+                    string.Format("{0} is not declared in ControllerFixtures", controllerFixtureName));
+            descriptor.ControllerTypeInfo = controllerType.GetTypeInfo();
 
             return descriptor;
         }

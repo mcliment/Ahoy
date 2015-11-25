@@ -61,26 +61,31 @@ namespace Swashbuckle.Swagger
             Assert.NotNull(operation);
             Assert.Equal("ReturnsEnumerable", operation.OperationId);
             Assert.Equal(new[] { "application/json", "text/json" }, operation.Produces.ToArray());
+            Assert.False(operation.Deprecated);
             // PUT collection/{id}
             operation = swagger.Paths["/collection/{id}"].Put;
             Assert.NotNull(operation);
             Assert.Equal("ReturnsVoid", operation.OperationId);
             Assert.Empty(operation.Produces.ToArray());
+            Assert.False(operation.Deprecated);
             // POST collection
             operation = swagger.Paths["/collection"].Post;
             Assert.NotNull(operation);
             Assert.Equal("ReturnsInt", operation.OperationId);
             Assert.Equal(new[] { "application/json", "text/json" }, operation.Produces.ToArray());
+            Assert.False(operation.Deprecated);
             // DELETE collection/{id}
             operation = swagger.Paths["/collection/{id}"].Delete;
             Assert.NotNull(operation);
             Assert.Equal("ReturnsVoid", operation.OperationId);
             Assert.Empty(operation.Produces.ToArray());
+            Assert.False(operation.Deprecated);
             // PATCH collection
             operation = swagger.Paths["/collection/{id}"].Patch;
             Assert.NotNull(operation);
             Assert.Equal("ReturnsVoid", operation.OperationId);
             Assert.Empty(operation.Produces.ToArray());
+            Assert.False(operation.Deprecated);
         }
 
         [Fact]
@@ -149,7 +154,7 @@ namespace Swashbuckle.Swagger
         [Theory]
         [InlineData("collection/{param}")]
         [InlineData("collection/{param?}")]
-        public void GetSwagger_SetsParameterRequired_ForRequiredAllRouteParams(string routeTemplate)
+        public void GetSwagger_SetsParameterRequired_ForAllRouteParams(string routeTemplate)
         {
             var subject = Subject(setupApis: apis => apis
                 .Add("GET", routeTemplate, nameof(ActionFixtures.AcceptsStringFromRoute)));
@@ -171,6 +176,22 @@ namespace Swashbuckle.Swagger
 
             var param = swagger.Paths["/collection"].Get.Parameters.First();
             Assert.Equal(false, param.Required);
+        }
+
+        [Fact]
+        public void GetSwagger_SetsParameterTypeString_ForUnboundRouteParams()
+        {
+            var subject = Subject(setupApis: apis => apis
+                .Add("GET", "collection/{param}", nameof(ActionFixtures.AcceptsNothing)));
+
+            var swagger = subject.GetSwagger("v1");
+
+            var param = swagger.Paths["/collection/{param}"].Get.Parameters.First();
+            Assert.IsAssignableFrom<NonBodyParameter>(param);
+            var nonBodyParam = param as NonBodyParameter;
+            Assert.Equal("param", nonBodyParam.Name);
+            Assert.Equal("path", nonBodyParam.In);
+            Assert.Equal("string", nonBodyParam.Type);
         }
 
         [Fact]
@@ -224,7 +245,7 @@ namespace Swashbuckle.Swagger
             var swagger = subject.GetSwagger("v1");
 
             var operation = swagger.Paths["/collection"].Get;
-            Assert.Equal(true, operation.Deprecated);
+            Assert.True(operation.Deprecated);
         }
 
         [Fact]
@@ -440,6 +461,32 @@ namespace Swashbuckle.Swagger
             var param = swagger.Paths["/{version}/collection"].Get.Parameters.First();
             Assert.Equal("version", param.Name);
             Assert.Equal(true, param.Required);
+        }
+
+        [Fact]
+        public void GetSwagger_ThrowsInformativeException_OnOverloadedActions()
+        {
+            var subject = Subject(setupApis: apis => apis
+                .Add("GET", "collection", nameof(ActionFixtures.AcceptsNothing))
+                .Add("GET", "collection", nameof(ActionFixtures.AcceptsStringFromQuery))
+            );
+
+            var exception = Assert.Throws<NotSupportedException>(() => subject.GetSwagger("v1"));
+            Assert.Equal(
+                "Multiple operations with path 'collection' and method 'GET'. Are you overloading action methods?",
+                exception.Message);
+        }
+
+        [Fact]
+        public void GetSwagger_ThrowsInformativeException_OnUnspecifiedHttpMethod()
+        {
+            var subject = Subject(setupApis: apis => apis
+                .Add(null, "collection", nameof(ActionFixtures.AcceptsNothing)));
+
+            var exception = Assert.Throws<NotSupportedException>(() => subject.GetSwagger("v1"));
+            Assert.Equal(
+                "Unbounded HTTP verbs for path 'collection'. Are you missing an HttpMethodAttribute?",
+                exception.Message);
         }
 
         private DefaultSwaggerProvider Subject(

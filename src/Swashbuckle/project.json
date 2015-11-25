@@ -1,0 +1,20 @@
+﻿{
+  "version": "6.0.0-rc1-final",
+  "description": "Swashbuckle - Swagger UI for WebApi (AspNet 5.0)",
+  "summary": "Next generation of Swashbuckle, targeting AspNet 5.0 (vNext)",
+  "authors": [ "Richard Morris" ],
+  "tags": [ "Swagger SwaggerUi Documentation Discovery Help WebApi AspNet vNext" ],
+  "projectUrl": "https://github.com/domaindrivendev/Swashbuckle",
+  "licenseUrl": "https://github.com/domaindrivendev/Swashbuckle/LICENSE",
+
+  "dependencies": {
+    "Swashbuckle.Swagger": "6.0.0-rc1-final" 
+  },
+
+  "resource": [ "SwaggerUi", "bower_components/swagger-ui/dist" ],
+
+  "frameworks": {
+    "dnx451": { },
+    "dnxcore50": { }
+  }
+}
